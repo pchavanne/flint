@@ -1,100 +1,93 @@
-#include "flint.h"
-#include "math.h"
+/* Float with integer arithmetic*/
 
-#define _EPS 1e-6
+#define NPY_NO_DEPRECATED_API NPY_API_VERSION
 
-int
-flint_isnonzero(flint f)
-{
-    return f.value != 0;
+
+#include <Python.h>
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static void
+set_zero_divide(void) {
+#ifdef ACQUIRE_GIL
+    /* Need to grab the GIL to dodge a bug in numpy */
+    PyGILState_STATE state = PyGILState_Ensure();
+#endif
+    if (!PyErr_Occurred()) {
+        PyErr_SetString(PyExc_ZeroDivisionError,
+                        "zero divide in rational arithmetic");
+    }
+#ifdef ACQUIRE_GIL
+    PyGILState_Release(state);
+#endif
 }
 
-int
-flint_isnan(flint f)
-{
-    return isnan(f.value);
+static const int64_t DEFAULT_MULTIPLIER = 1000000;
+static const int61_t DEFAULT_NB_DIGITS = 4;
+
+typedef struct {
+    int64_t int_value;
+    int64_t multiplier;
+    int16_t nb_digits;
+} flint;
+
+static flint
+make_flint(void){
+    flint f = {
+            .int_value = 0,
+            .multiplier = DEFAULT_MULTIPLIER,
+            .nb_digits = DEFAULT_NB_DIGITS
+    };
+    return f;
 }
 
-int
-flint_isinf(flint f)
-{
-    return isinf(f.value);
+static flint
+make_flint(float float_value) {
+    flint f = make_flint();
+    f.int_value = (int64_t)(float_value * DEFAULT_MULTIPLIER);
+    return f;
 }
 
-int
-flint_isfinite(flint f)
-{
-    return isfinite(f.value);
+static flint
+flint_negative(flint f){
+    flint neg = make_flint();
+    neg.int_value = -f.int_value;
+    return neg;
 }
 
-double
-flint_absolute(flint f)
-{
-   return abs(f.value);
+static flint
+flint_add(flint a, flint b){
+    flint add = make_flint();
+    add.int_value = a.int_value + b.int_value;
+    return add;
 }
 
-flint
-flint_add(flint f1, flint f2)
-{
-   return (flint) {f1.value + f2.value, f1.multiplier, f1.digits};
+static flint
+flint_substract(flint a, flint b){
+    flint sub = make_flint();
+    sub.int_value = a.int_value - b.int_value;
+    return sub;
 }
 
-flint
-flint_subtract(flint f1, flint f2)
-{
-   return (flint) {f1.value - f2.value, f1.multiplier, f1.digits};
+static flint
+flint_multiply(flint a, flint b){
+    flint mult = make_flint();
+    mult.int_value = (int64_t)(a.int_value * b.int_value / DEFAULT_MULTIPLIER);
+    return mult;
 }
 
-flint
-flint_multiply(flint f1, flint f2)
-{
-   return (flint) {double(f1.value * f2.value / f1.multiplier), f1.multiplier, f1.digits};
+static flint
+flint_divide(flint a, flint b){
+    flint div = make_flint();
+    div.int_value = (int64_t)(a.int_value * DEFAULT_MULTIPLIER / b.int_value);
+    return div;
 }
 
-flint
-flint_divide(flint f1, flint f2)
-{
-   return (flint) {double(f1.value * f1.multiplier / f2.value), f1.multiplier, f1.digits};
-}
 
-flint
-flint_multiply_scalar(flint f, float s)
-{
-   return (flint) {double(f1.value * s / f1.multiplier), f1.multiplier, f1.digits};
+#ifdef __cplusplus
 }
-
-flint
-flint_divide_scalar(flint f, float s)
-{
-   return (flint) {double(f1.value * f1.multiplier / s), f1.multiplier, f1.digits};
-}
-
-flint
-flint_negative(flint f)
-{
-   return (flint) {-f1.value, f1.multiplier, f1.digits};
-}
-
-int
-flint_equal(flint f1, flint f2)
-{
-    return !flint_isnan(f1) && !flint_isnan(f2)) && f1.value == f2.value && f1.multiplier == f2.multiplier;
-}
-
-int
-flint_not_equal(flint f1, flint f2)
-{
-    return !flint_equal(f1, f2);
-}
-
-int
-flint_less(flint f1, flint f2)
-{
-    return !flint_isnan(f1) && !flint_isnan(f2)) && f1.value < f2.value;
-}
-
-int
-flint_less_equal(flint f1, flint f2)
-{
-   return !flint_isnan(f1) && !flint_isnan(f2)) && f1.value <= f2.value;
-}
+#endif
