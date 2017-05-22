@@ -58,7 +58,7 @@ safe_abs64(int64_t x) {
     }
     int64_t nx = -x;
     if (nx<0) {
-        set_overflow();
+        set_overflaw();
     }
     return nx;
 }
