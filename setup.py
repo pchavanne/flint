@@ -13,5 +13,3 @@ setup(name='flint_type',
       author_email='philippe.chavanne@gmail.com',
       url='https://github.com/pchavanne/flint',
       ext_modules=[flint_ext])
-
-
