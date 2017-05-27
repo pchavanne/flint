@@ -58,7 +58,7 @@ safe_abs64(int64_t x) {
     }
     int64_t nx = -x;
     if (nx<0) {
-        set_overflaw();
+        set_overflow();
     }
     return nx;
 }
@@ -83,9 +83,9 @@ make_flint(void){
 }
 
 static flint
-make_flint_from_value(float float_value) {
+make_flint_from_value(double double_value) {
     flint f = make_flint();
-    f.int_value = (int64_t)(float_value * DEFAULT_MULTIPLIER);
+    f.int_value = (int64_t)(double_value * DEFAULT_MULTIPLIER);
     return f;
 }
 
@@ -235,7 +235,7 @@ flint_ge(flint a, flint b){
 /* Expose flint to Python as a numpy scalar */
 
 typedef struct {
-    PyObject_HEAD;
+    PyObject_HEAD
     flint f;
 } PyFlint;
 
@@ -275,7 +275,14 @@ pyflint_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
         return v[0];
     }
     else if (PyFloat_Check(v[0])) {
-        flint f = make_flint_from_value(PyFloat_AsDouble(v[0]));
+        flint f = make_flint_from_value(PyFloat_AsDouble((double*)v[0]));
+        if (PyErr_Occurred()) {
+            return 0;
+        }
+        return PyFlint_FromFlint(f);
+    }
+    else if (PyInt_Check(v[0])) {
+        flint f = make_flint_int(PyInt_AsLong((int64_t*)v[0]));
         if (PyErr_Occurred()) {
             return 0;
         }
@@ -340,7 +347,7 @@ static PyObject*
 pyflint_repr(PyObject* self) {
     flint x = ((PyFlint*)self)->f;
     char* f_char =  PyOS_double_to_string(flint_double(x), 'f', x.nb_digits, 0, Py_DTST_FINITE);
-    return PyUString_FromString(strcat("flint", f_char));
+    return PyUString_FromString(f_char); /*strcat("flint", f_char)*/
 }
 
 static PyObject*
@@ -448,12 +455,24 @@ static PyNumberMethods pyflint_as_number = {
 };
 
 static PyObject*
-pyflint_int_value(PyObject* self, void* closure) {
-    return PyInt_FromLong(((PyFlint*)self)->f.int_value);
+pyflint_get_int_value(PyObject* self, void* closure) {
+    return PyLong_FromLong(((PyFlint*)self)->f.int_value);
+}
+
+static PyObject*
+pyflint_get_multiplier(PyObject* self, void* closure) {
+    return PyLong_FromLong(((PyFlint*)self)->f.multiplier);
+}
+
+static PyObject*
+pyflint_get_nb_digits(PyObject* self, void* closure) {
+    return PyInt_FromLong(((PyFlint*)self)->f.nb_digits);
 }
 
 static PyGetSetDef pyflint_getset[] = {
-        {(char*)"int_value",pyflint_int_value,0,(char*)"numerator",0},
+        {(char*)"int_value", pyflint_get_int_value,0,(char*)"int_value",0},
+	{(char*)"multiplier",pyflint_get_multiplier,0,(char*)"multiplier",0},
+	{(char*)"nb_digits",pyflint_get_nb_digits,0,(char*)"nb_digits",0},
         {0} /* sentinel */
 };
 
@@ -486,7 +505,7 @@ static PyTypeObject PyFlint_Type = {
         0,                                        /* tp_getattro */
         0,                                        /* tp_setattro */
         0,                                        /* tp_as_buffer */
-        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES| Py_TPFLAGS_BASETYPE, /* tp_flags */
         "Fixed precision float number",           /* tp_doc */
         0,                                        /* tp_traverse */
         0,                                        /* tp_clear */
@@ -968,6 +987,7 @@ PyMODINIT_FUNC initflint(void) {
     }
 #define REGISTER_UFUNC_BINARY_FLINT(name) REGISTER_UFUNC(name,{npy_flint,npy_flint,npy_flint})
 #define REGISTER_UFUNC_BINARY_COMPARE(name) REGISTER_UFUNC(name,{npy_flint,npy_flint,NPY_BOOL})
+#define REGISTER_UFUNC_BINARY_SCALAR(name) REGISTER_UFUNC(name,{npy_flint,NPY_DOUBLE,npy_flint})
 #define REGISTER_UFUNC_UNARY(name) REGISTER_UFUNC(name,{npy_flint,npy_flint})
     /* Binary */
     REGISTER_UFUNC_BINARY_FLINT(add)
@@ -1022,22 +1042,6 @@ PyMODINIT_FUNC initflint(void) {
         return NULL;
     }
     PyModule_AddObject(m,"matrix_multiply",(PyObject*)gufunc);
-
-    /* Create numerator and denominator ufuncs */
-#define NEW_UNARY_UFUNC(name,type,doc) { \
-        PyObject* ufunc = PyUFunc_FromFuncAndData(0,0,0,0,1,1,PyUFunc_None,(char*)#name,(char*)doc,0); \
-        if (!ufunc) { \
-            return NULL; \
-        } \
-        int types[2] = {npy_flint,type}; \
-        if (PyUFunc_RegisterLoopForType((PyUFuncObject*)ufunc,npy_flint,flint_ufunc_##name,types,0)<0) { \
-            return NULL; \
-        } \
-        PyModule_AddObject(m,#name,(PyObject*)ufunc); \
-    }
-// NEW_UNARY_UFUNC(numerator,NPY_INT64,"flint number numerator");
-
-
 
     return m;
 }

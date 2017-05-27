@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-import flint
+from flint_type import flint
 import numpy as np
 
 v1 = 123.45
