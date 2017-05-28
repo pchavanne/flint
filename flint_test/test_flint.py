@@ -5,6 +5,7 @@ import numpy as np
 v1 = 123.45
 v2 = 678.90
 
+
 f1 = flint(v1)
 f2 = flint(v2)
 
