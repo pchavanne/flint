@@ -6,7 +6,7 @@ flint_ext = Extension('flint_type.flint',
                       include_dirs=[np.get_include()])
 
 setup(name='flint_type',
-      version='0.1',
+      version='0.0.1',
       description='Python and Numpy float type with integer arithmetic',
       packages=['flint_type'],
       author='Philippe Chavanne',
