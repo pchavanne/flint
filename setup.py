@@ -12,4 +12,5 @@ setup(name='flint_type',
       author='Philippe Chavanne',
       author_email='philippe.chavanne@gmail.com',
       url='https://github.com/pchavanne/flint_type',
+      install_requires=['numpy'],
       ext_modules=[flint_ext])
