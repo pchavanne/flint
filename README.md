@@ -65,5 +65,8 @@ with usual numpy usage
     
 ### installation
 
-    pip install git+https://github.com/pchavanne/flint_type
+    pip install flint_type
 
+or the latest
+
+    pip install git+https://github.com/pchavanne/flint_type

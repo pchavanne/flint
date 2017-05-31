@@ -14,4 +14,3 @@ setup(name='flint_type',
       url='https://github.com/pchavanne/flint_type',
       install_requires=['numpy'],
       ext_modules=[flint_ext])
-
