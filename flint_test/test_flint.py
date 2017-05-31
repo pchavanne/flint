@@ -5,7 +5,6 @@ import numpy as np
 v1 = 123.45
 v2 = 678.90
 
-
 f1 = flint(v1)
 f2 = flint(v2)
 
@@ -13,13 +12,14 @@ another_f1 = flint(v1)
 assert another_f1 == f1
 assert another_f1 is not f1
 
+# Copy constructor
 f_from_f1 = flint(f1)
 assert f_from_f1 == f1
 assert f_from_f1 is not f1
 
 assert float(f1) == v1
 assert int(f1) == v1 * f1.multiplier
-assert str(f1) == str(v1)
+assert str(f1) == "{0:.4f}".format(v1)
 
 v3 = v1 + v2
 f3 = flint(v3)
@@ -46,8 +46,11 @@ assert f6 == f2 / f1
 assert f6 == v2 / f1
 assert f6 == f2 / v1
 
-
-
-arr = np.asarray([f1, f2], dtype=flint)
-arr.mean()
+arr = [v1, v2]
+npf = np.asarray(arr, dtype=flint)
+npf_from_flint = np.asarray([f1, f2], dtype=flint)
+assert (npf == npf_from_flint).all()
+assert npf.shape == (2,)
+npf.mean()
+npf.cumsum()
 

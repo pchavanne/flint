@@ -83,16 +83,23 @@ make_flint(void){
 }
 
 static flint
-make_flint_from_value(double double_value) {
+make_flint_from_double(double double_value) {
     flint f = make_flint();
     f.int_value = (int64_t)(double_value * DEFAULT_MULTIPLIER);
     return f;
 }
 
 static flint
-make_flint_int(int64_t n) {
+make_flint_from_int(int64_t n) {
     flint f = make_flint();
     f.int_value = n * DEFAULT_MULTIPLIER;
+    return f;
+}
+
+static flint
+make_flint_from_flint(flint other_flint) {
+    flint f = make_flint();
+    f.int_value = other_flint.int_value;
     return f;
 }
 
@@ -271,18 +278,21 @@ pyflint_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     PyObject* v[1] = {PyTuple_GET_ITEM(args,0)};
 
     if (PyFlint_Check(v[0])) {
-        Py_INCREF(v[0]);
-        return v[0];
+        flint f = make_flint_from_flint(((PyFlint*)v[0])->f);
+        if (PyErr_Occurred()) {
+            return 0;
+        }
+        return PyFlint_FromFlint(f);
     }
     else if (PyFloat_Check(v[0])) {
-        flint f = make_flint_from_value(PyFloat_AsDouble((double*)v[0]));
+        flint f = make_flint_from_double(PyFloat_AsDouble((double*)v[0]));
         if (PyErr_Occurred()) {
             return 0;
         }
         return PyFlint_FromFlint(f);
     }
     else if (PyInt_Check(v[0])) {
-        flint f = make_flint_int(PyInt_AsLong((int64_t*)v[0]));
+        flint f = make_flint_from_int(PyInt_AsLong((int64_t*)v[0]));
         if (PyErr_Occurred()) {
             return 0;
         }
@@ -322,7 +332,7 @@ pyflint_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
             Py_INCREF(Py_NotImplemented); \
             return Py_NotImplemented; \
         } \
-        dst = make_flint_from_value(v_); \
+        dst = make_flint_from_double(v_); \
     }
 
 static PyObject*
@@ -571,7 +581,7 @@ npyflint_setitem(PyObject* item, void* data, void* arr) {
                     "expected flint, got %s", item->ob_type->tp_name);
             return -1;
         }
-        f = make_flint_from_value(v);
+        f = make_flint_from_double(v);
     }
     memcpy(data,&f,sizeof(flint));
     return 0;
@@ -744,7 +754,7 @@ PyArray_Descr npyflint_descr = {
         } \
     }
 #define DEFINE_INT_CAST(bits) \
-    DEFINE_CAST(int##bits##_t,flint,flint y = make_flint_int(x);) \
+    DEFINE_CAST(int##bits##_t,flint,flint y = make_flint_from_int(x);) \
     DEFINE_CAST(flint,int##bits##_t,int64_t z = flint_int(x); int##bits##_t y = z; if (y != z) set_overflow();)
 DEFINE_INT_CAST(8)
 DEFINE_INT_CAST(16)
@@ -752,7 +762,7 @@ DEFINE_INT_CAST(32)
 DEFINE_INT_CAST(64)
 DEFINE_CAST(flint,float,double y = flint_double(x);)
 DEFINE_CAST(flint,double,double y = flint_double(x);)
-DEFINE_CAST(npy_bool,flint,flint y = make_flint_int(x);)
+DEFINE_CAST(npy_bool,flint,flint y = make_flint_from_int(x);)
 DEFINE_CAST(flint,npy_bool,npy_bool y = flint_nonzero(x);)
 
 #define BINARY_UFUNC(name,intype0,intype1,outtype,exp) \
@@ -773,7 +783,7 @@ FLINT_BINARY_UFUNC(subtract,flint,flint_subtract(x,y))
 FLINT_BINARY_UFUNC(multiply,flint,flint_multiply(x,y))
 FLINT_BINARY_UFUNC(divide,flint,flint_divide(x,y))
 FLINT_BINARY_UFUNC(remainder,flint,flint_remainder(x,y))
-FLINT_BINARY_UFUNC(floor_divide,flint,make_flint_int(flint_floor(flint_divide(x,y))))
+FLINT_BINARY_UFUNC(floor_divide,flint,make_flint_from_int(flint_floor(flint_divide(x,y))))
 PyUFuncGenericFunction flint_ufunc_true_divide = flint_ufunc_divide;
 FLINT_BINARY_UFUNC(minimum,flint,flint_lt(x,y)?x:y)
 FLINT_BINARY_UFUNC(maximum,flint,flint_lt(x,y)?y:x)
@@ -797,12 +807,12 @@ FLINT_BINARY_UFUNC(greater_equal,npy_bool,flint_ge(x,y))
     }
 UNARY_UFUNC(negative,flint,flint_negative(x))
 UNARY_UFUNC(absolute,flint,flint_abs(x))
-UNARY_UFUNC(floor,flint,make_flint_int(flint_floor(x)))
-UNARY_UFUNC(ceil,flint,make_flint_int(flint_ceil(x)))
-UNARY_UFUNC(trunc,flint,make_flint_int(flint_int(x)))
+UNARY_UFUNC(floor,flint,make_flint_from_int(flint_floor(x)))
+UNARY_UFUNC(ceil,flint,make_flint_from_int(flint_ceil(x)))
+UNARY_UFUNC(trunc,flint,make_flint_from_int(flint_int(x)))
 UNARY_UFUNC(square,flint,flint_multiply(x,x))
-UNARY_UFUNC(rint,flint,make_flint_int(flint_rint(x)))
-UNARY_UFUNC(sign,flint,make_flint_int(flint_sign(x)))
+UNARY_UFUNC(rint,flint,make_flint_from_int(flint_rint(x)))
+UNARY_UFUNC(sign,flint,make_flint_from_int(flint_sign(x)))
 UNARY_UFUNC(reciprocal,flint,flint_inverse(x))
 
 static NPY_INLINE void
